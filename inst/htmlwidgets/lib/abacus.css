@@ -1,0 +1,256 @@
+body {
+  padding: 0px !important;
+}
+
+#htmlwidget_container {
+  top: 0px !important;
+  bottom: 0px !important;
+  right: 0px !important;
+  left: 0px !important;
+}
+
+#luchart {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.9em;
+}
+
+select {
+  margin: 5px 10px;
+}
+
+dialog {
+  position: absolute;
+  margin: auto;
+  border: 1px solid black;
+  border-radius: 5px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.button_tpm {
+  margin: 5px 10px;
+  padding: 5px 10px;
+}
+
+#control_panel {
+  text-align: center;
+}
+
+#pu_map {
+  transition: transform 0.2s; /* Animation */
+  width: 200px;
+  height: 200px;
+  margin: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  display: inline-block;
+}
+
+#pu_map:hover {
+  transform: scale(1.2);
+  transform-origin: top left;
+  border: 1px solid black;
+  border-radius: 3px;
+}
+
+#lc_area_chart {
+  transition: transform 0.2s; /* Animation */
+  width: 300px;
+  height: 200px;
+  margin: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  display: inline-block;
+}
+
+#lc_area_chart:hover {
+  transform: scale(1.2);
+  transform-origin: top right;
+  border: 1px solid black;
+  border-radius: 3px;
+}
+
+#tooltip_area {
+  top: 5px;
+  right: 70%;
+  position: absolute;
+  z-index: 1;
+  width: 300px;
+  width: 200px;
+  background: white;
+  border: 1px solid black;
+  border-radius: 5px;
+  pointer-events: none;
+}
+
+#tooltip_area::after {
+  content: " ";
+  position: absolute;
+  top: 50%;
+  left: 100%; /* To the right of the tooltip */
+  margin-top: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: transparent transparent transparent white;
+}
+
+#tpm_editor {
+  text-align: left;
+  font-size: 0.85em;
+}
+
+#tpm_editor hr {
+  border-top: 1px solid black;
+}
+
+.title_edit,
+.lc_label {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.title_def {
+  width: 125px;
+  text-align: right;
+  font-size: 0.9em;
+}
+
+#reset_button,
+.def_button {
+  width: 25px;
+  height: 20px;
+  margin: 1px 2px;
+
+  padding: 0px;
+}
+
+#noconv_button {
+  float: right;
+  position: relative;
+  transform: translateY(110%);
+  font-size: 0.9em;
+}
+
+hr {
+  margin: 5px;
+  padding: 0;
+}
+
+.title_edit,
+.lc_def,
+.lc_label,
+.inp_lc_area,
+.inp_lc_area_ratio {
+  padding: 2px 5px;
+  margin: 1px 2px;
+}
+
+.lc_def {
+  text-align: right;
+  display: inline-block;
+}
+
+.def_area {
+  width: 50px;
+}
+
+.def_ratio {
+  width: 60px;
+  background: #e6e6e9;
+  border-radius: 3px;
+}
+
+.inp_lc_area {
+  max-width: 80px;
+  text-align: right;
+  background: #e9f5db;
+  border-radius: 3px;
+  border: 1px solid green;
+  font-size: 0.95em;
+}
+
+.inp_lc_area_ratio {
+  display: inline-block;
+  width: 60px;
+  text-align: right;
+  background: #e9f5db;
+  border-radius: 3px;
+}
+
+/* Dropdown Button */
+.dropbtn {
+  float: right;
+  transform: translateY(-75%);
+  font-size: 0.9em;
+}
+
+/* The container <div> - needed to position the dropdown content */
+.dropdown {
+  position: absolute;
+  display: inline-block;
+  top: 10px;
+  right: 270px;
+}
+
+/* Dropdown Content (Hidden by Default) */
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: #f1f1f1;
+  min-width: 250px;
+  box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+  z-index: 2;
+  overflow-y: auto;
+  height: 300px;
+  border-radius: 3px;
+}
+
+/* Links inside the dropdown */
+.dropdown-content div {
+  color: black;
+  padding: 5px 10px;
+  text-decoration: none;
+  display: block;
+}
+
+/* Change color of dropdown links on hover */
+.dropdown-content div:hover {
+  background-color: #ddd;
+}
+
+/* Show the dropdown menu (use JS to add this class to the .dropdown-content container when the user clicks on the dropdown button) */
+.show {
+  display: block;
+}
+
+.inp_lock_label {
+  width: 12px;
+  height: 14px;
+  cursor: pointer;
+  caret-color: transparent;
+  display: inline-block;
+  align-items: center;
+  margin: 1px 2px;
+  vertical-align: middle;
+  border-radius: 3px;
+}
+
+/* Hide the browser's default checkbox */
+.inp_lock_label input {
+  display: none;
+}
+
+/* Hide the checked checkbox */
+.img-lock-checked {
+  display: none;
+}
+
+.img-hover {
+  display: none;
+}
+
+.inp_lock_label input:checked ~ .img-lock-checked {
+  display: inline-block;
+}
+
+.inp_lock_label input:checked ~ .img-lock {
+  display: none;
+}

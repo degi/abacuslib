@@ -1,0 +1,21 @@
+# (uncomment to add a dependency)
+# dependencies:
+#  - name:
+#    version:
+#    src:
+#    script:
+#    stylesheet:
+
+dependencies:
+- name: d3
+  version: 7.8.5
+  src: "htmlwidgets/lib"
+  script:
+    - d3.v7.min.js
+- name: reddabacus
+  version: 1.0.0
+  src: "htmlwidgets/lib"
+  script:
+    - abacus.js
+  stylesheet:   
+    - abacus.css
