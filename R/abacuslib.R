@@ -5,11 +5,12 @@
 #' @import htmlwidgets
 #'
 #' @export
-abacuslib <- function(data, width = NULL, height = NULL, elementId = NULL) {
+abacuslib <- function(data, scenario = NULL, width = NULL, height = NULL, elementId = NULL) {
 
   # forward options using x
   x = list(
-    data = data
+    data = data,
+    scenario = scenario
   )
 
   # create widget

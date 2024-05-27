@@ -25,19 +25,21 @@ dialog {
   border-radius: 5px;
   text-align: center;
   background: rgba(255, 255, 255, 0.95);
+  box-shadow: 5px 5px 15px #404040;
 }
 
 .button_tpm {
   margin: 5px 10px;
   padding: 5px 10px;
+  border: 0px;
 }
-
+/*
 #control_panel {
   text-align: center;
 }
 
 #pu_map {
-  transition: transform 0.2s; /* Animation */
+  transition: transform 0.2s; 
   width: 200px;
   height: 200px;
   margin: 20px;
@@ -50,10 +52,10 @@ dialog {
   transform-origin: top left;
   border: 1px solid black;
   border-radius: 3px;
-}
-
+}*/
+/*
 #lc_area_chart {
-  transition: transform 0.2s; /* Animation */
+  transition: transform 0.2s; 
   width: 300px;
   height: 200px;
   margin: 10px;
@@ -67,34 +69,41 @@ dialog {
   border: 1px solid black;
   border-radius: 3px;
 }
+*/
 
 #tooltip_area {
-  top: 5px;
-  right: 70%;
+  /*top: 5px;
+  right: 70%;*/
+  left:10%;
+  top:320px;
   position: absolute;
   z-index: 1;
+  
+  /*
   width: 300px;
-  width: 200px;
-  background: white;
-  border: 1px solid black;
-  border-radius: 5px;
+  width: 200px; */
+  background: #404040;
+  /*border: 1px solid black;*/
+  border-radius: 20px;
   pointer-events: none;
+  box-shadow: 5px 5px 15px #404040;
 }
 
 #tooltip_area::after {
-  content: " ";
+  content: "";
   position: absolute;
-  top: 50%;
-  left: 100%; /* To the right of the tooltip */
-  margin-top: -5px;
-  border-width: 5px;
+  bottom: 100%;
+  left: 50%;
+  margin-left: -15px;
+  border-width: 15px;
   border-style: solid;
-  border-color: transparent transparent transparent white;
+  border-color: transparent transparent #404040 transparent;
 }
+
 
 #tpm_editor {
   text-align: left;
-  font-size: 0.85em;
+  font-size: 1em;
 }
 
 #tpm_editor hr {
@@ -108,7 +117,7 @@ dialog {
 }
 
 .title_def {
-  width: 125px;
+  width: 166px;
   text-align: right;
   font-size: 0.9em;
 }
@@ -120,13 +129,17 @@ dialog {
   margin: 1px 2px;
 
   padding: 0px;
+  border-width: 0px;
+  border-radius: 6px;
 }
 
 #noconv_button {
   float: right;
   position: relative;
-  transform: translateY(110%);
+  transform: translateY(120%);
   font-size: 0.9em;
+  border-width: 0px;
+  border-radius: 6px;
 }
 
 hr {
@@ -149,11 +162,11 @@ hr {
 }
 
 .def_area {
-  width: 50px;
+  width: 80px;
 }
 
 .def_ratio {
-  width: 60px;
+  width: 80px;
   background: #e6e6e9;
   border-radius: 3px;
 }
@@ -169,7 +182,7 @@ hr {
 
 .inp_lc_area_ratio {
   display: inline-block;
-  width: 60px;
+  width: 80px;
   text-align: right;
   background: #e9f5db;
   border-radius: 3px;
@@ -180,6 +193,8 @@ hr {
   float: right;
   transform: translateY(-75%);
   font-size: 0.9em;
+  border-width: 0px;
+  border-radius: 6px;
 }
 
 /* The container <div> - needed to position the dropdown content */

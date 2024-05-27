@@ -1,3 +1,8 @@
+function is_exist(v) {
+  if (typeof v == "undefined") return false;
+  return true;
+}
+
 function validate_area(a) {
   const precision = 1000000;
   return d3.max([0, Math.round((a + Number.EPSILON) * precision) / precision]);
@@ -26,6 +31,7 @@ function get_baseline_data(abacus_data) {
     (d) =>
       d.scenario_id === 0 && d.iteration_id === 0 && validate_area(d.area) > 0
   );
+
   let lc_area = sum_lc_area(base_data, false);
   //generate TPM
   let base_tpm = base_data.map((d) => ({
@@ -66,6 +72,8 @@ function iterate_projection(baseline, scenario = null, n = 1) {
   let lc_sum_arr = lc_area;
   let lc_arr = null;
 
+  // console.log(lc_area);
+
   function get_sc_r(def_r, iteration = 0, zone_id = 0, lc1_id = 0, lc2_id = 0) {
     if (scenario == null) return def_r;
     //find the r scenario from the earlier iteration
@@ -85,6 +93,12 @@ function iterate_projection(baseline, scenario = null, n = 1) {
     return sc[0].r;
   }
 
+  function get_area(zone_id, lc1_id) {
+    const a = lc_area.find((f) => f.zone_id == zone_id && f.lc1_id == lc1_id);
+    if (typeof a == "undefined") return 0;
+    return a.area;
+  }
+
   for (let i = 0; i < n + 1; ++i) {
     let a_data = baseline.tpm.map((e) => {
       const r = get_sc_r(e.r, i, e.zone_id, e.lc1_id, e.lc2_id);
@@ -95,8 +109,9 @@ function iterate_projection(baseline, scenario = null, n = 1) {
         lc2_id: e.lc2_id,
         r: r,
         area:
-          lc_area.find((f) => f.zone_id == e.zone_id && f.lc1_id == e.lc1_id)
-            .area * r,
+          // lc_area.find((f) => f.zone_id == e.zone_id && f.lc1_id == e.lc1_id)
+          //   .area * r,
+          get_area(e.zone_id, e.lc1_id) * r,
       };
     });
     lc_arr = lc_arr == null ? a_data : [...lc_arr, ...a_data];
@@ -121,147 +136,198 @@ function iterate_projection(baseline, scenario = null, n = 1) {
   return { lc_area: lc_arr, lc_sum_area: lc_sum_arr };
 }
 
-function get_baseline_projection(abacus_data) {
-  const iteration = abacus_data.project.n_iteration[0];
-  const b = get_baseline_data(abacus_data);
-  const proj = iterate_projection(b, null, iteration);
+function get_carbon_emission(carbonstock, projection_data, other_factor = null, period = 0) {
+  function get_c(lc_id, zone_id = 0, iteration = 0, scenario_id = 0) {
+    cr = carbonstock.find(
+      (d) =>
+        d.lc_id == lc_id && d.zone_id == zone_id && d.iteration_id == iteration
+    );
+
+    if (typeof cr == "undefined") return null;
+    return cr.c;
+  }
+
+  function get_other_e(lc_id, zone_id = 0, iteration = 0, scenario_id = 0) {
+    if(!other_factor) return 0;
+    if(zone_id) {
+      cr = other_factor.find(
+        (d) =>
+          d.lc_id == lc_id && d.zone_id == zone_id 
+      );
+    } else {
+      cr = other_factor.find(
+        (d) =>
+          d.lc_id == lc_id
+      );
+    }
+
+    if (typeof cr == "undefined") return 0;
+    return cr.efactor*period;
+  }
+
+  let lc_area = projection_data.lc_area;
+  const lc_e = lc_area.map((d) => ({
+    ...d,
+    emission: ((get_c(d.lc1_id) - get_c(d.lc2_id)) * d.area * 44) / 12,
+    emission_other: (get_other_e(d.lc1_id) + get_other_e(d.lc2_id))* d.area/2
+  }));
+
+  const zone_e_sum = d3.rollups(
+    lc_e,
+    //TODO: to be check, addition of e-other
+    (v) => d3.sum(v, (d) => d.emission + d.emission_other),
+
+    (d) => d.zone_id,
+    (d) => d.iteration
+  );
+
+  const zone_e = zone_e_sum
+    .map((d) =>
+      d[1].map((e) => ({
+        zone_id: d[0],
+        iteration: e[0],
+        emission: e[1],
+      }))
+    )
+    .flat(1);
+
+  const itr_e_sum = d3.rollups(
+    zone_e,
+    (v) => d3.sum(v, (d) => d.emission),
+    (d) => d.iteration
+  );
+
+  const itr_e = itr_e_sum
+    .map((d) => ({ iteration: d[0], emission: d[1] }))
+    .flat(1);
+
   return {
-    data: abacus_data,
-    baseline: get_baseline_data(abacus_data),
-    iteration: iteration,
-    projection: proj,
+    lc_emission: lc_e,
+    zone_emission: zone_e,
+    iteration_emission: itr_e,
   };
 }
 
-function get_lc_conv(baseline_projection, iteration = 0, zone_id = 0) {
-  iteration = Math.max(0, Math.min(baseline_projection.iteration, iteration));
-  zone_id = Number(zone_id);
-  let lc_proj;
-  if (iteration === 0) {
-    lc_proj = baseline_projection.baseline.area.filter(
-      (d) => d.zone_id === zone_id
-    );
-  } else {
-    lc_proj = baseline_projection.projection[iteration - 1].filter(
-      (d) => d.zone_id === zone_id
-    );
-  }
-  if (typeof lc_proj === "undefined") return null;
-  const t = baseline_projection.baseline.tpm.filter(
-    (d) => d.zone_id === zone_id
-  );
-  const lc_a = t.map((d) => ({
-    ...d,
-    area: validate_area(lc_proj.find((e) => e.lc1_id === d.lc1_id).area * d.r),
-  }));
-  return lc_a.filter((d) => d.area > 0);
+function get_baseline_projection(abacus_data, iteration) {
+  // let iteration, 
+  let b, proj, cstock, period_yr;
+
+  // iteration = abacus_data.project.n_iteration[0];
+  b = get_baseline_data(abacus_data);
+  proj = iterate_projection(b, null, iteration);
+  cstock = abacus_data.carbonstock.filter((d) => d.scenario_id == 0);
+
+  return {
+    data: abacus_data,
+    baseline: b,
+    iteration: iteration,
+    projection: proj,
+    emission: get_carbon_emission(cstock, proj, abacus_data.other_emission_factor, 
+      date_diff_year(
+      abacus_data.project.date1,
+      abacus_data.project.date2
+    )),
+  };
 }
 
-function get_single_lc_conv(
+function parseDate(input) {
+  var parts = input.match(/(\d+)/g);
+  // new Date(year, month [, date [, hours[, minutes[, seconds[, ms]]]]])
+  return new Date(parts[0], parts[1] - 1, parts[2]); // months are 0-based
+}
+
+function date_diff_year(d1, d2) {
+  let weeks = Math.round((d2 - d1) / (7 * 24 * 60 * 60 * 1000));
+  return weeks / 52.25;
+}
+
+function show_lc_conversion(
+  id_div,
   baseline_projection,
-  iteration = 0,
-  zone_id = 0,
-  lc_id = 0
+  LIB_PATH,
+  updateValue,
+  scenario = null,
+  width = 700,
 ) {
-  const lc_conv = get_lc_conv(baseline_projection, iteration, zone_id);
-  if (lc_conv === null) return null;
-  const t = lc_conv.filter((d) => d.lc1_id === lc_id);
-  return t.map((d) => ({
-    ...d,
-    lock: false,
-    label: baseline_projection.data.landcover.find((e) => e.lc_id === d.lc2_id)
-      .label,
-  }));
-}
+  // console.log(scenario);
 
-function show_lc_conversion(id_div, baseline_projection, LIB_PATH, updateValue) {
-  let scenario_tpm = null;
-  let scenario_act = null;
-  const zone = baseline_projection.data.zone;
-  const n_iteration = baseline_projection.iteration;
+  let n_iteration = baseline_projection.iteration;
   const abacus_data = baseline_projection.data;
-  const baseline = get_baseline_data(abacus_data);
-  let projection = iterate_projection(baseline, null, n_iteration);
-  const b_projection = structuredClone(projection);
+  const cstock = abacus_data.carbonstock.filter((d) => d.scenario_id == 0);
+  let scenario_tpm = null;
+  let baseline = null;
+  let b_projection = baseline_projection.projection;
+  let projection = null;
+  let emission = null;
   let lc_edit;
+  let lc_edit_default;
   let edited_period_id = 0;
   let edited_zone_id = 0;
   let edited_lc1_id = 0;
+  let edited_lc1_id_list = [];
+  let period_yr = 0;
+
+  
+  
+
+
+  if (abacus_data.version == 2) {
+    period_yr = date_diff_year(
+      abacus_data.project.date1,
+      abacus_data.project.date2
+    );
+  }
 
   function get_iteration_year(i) {
-    // const p = abacus_data.baseline_period;
-    const p = [
-      abacus_data.project.baseyear0[0],
-      abacus_data.project.baseyear1[0],
-    ];
-    if (i <= 1) return p[i];
-    return p[1] + (i - 1) * (p[1] - p[0]);
+    if (abacus_data.version == 1) {
+      const p = [
+        abacus_data.project.baseyear0[0],
+        abacus_data.project.baseyear1[0],
+      ];
+
+      if (i <= 1) return p[i];
+      return p[1] + (i - 1) * (p[1] - p[0]);
+    } else if (abacus_data.version == 2) {
+      return (
+        abacus_data.project.date1.getFullYear() + Math.round(period_yr) * i
+      );
+    }
   }
 
   function get_period_label(i) {
+    period_yr = date_diff_year(
+      abacus_data.project.date1,
+      abacus_data.project.date2
+    );
     return get_iteration_year(i) + "-" + get_iteration_year(i + 1);
   }
 
-  // const h = d3.select("#lc_edit");
-  //   console.log(id_div);
+  //PANEL LAYOUT
   const h = d3.select("#" + id_div);
   h.selectAll("*").remove("*");
   const cp = h.append("div").attr("id", "control_panel");
-  cp.append("div").attr("id", "pu_map");
-  cp.append("div").attr("id", "lc_area_chart");
+  const zs = cp.append("div").attr("id", "zone_selector");
+  // cp.append("div").attr("id", "pu_map");
+  cp.append("div").attr("id", "lc_area_chart").style("width", "100%");
   h.append("div").attr("id", "lc_chart");
 
-  planning_unit_map("#pu_map", abacus_data, edited_zone_id, select_zone);
+  //input number of iteration
+  zs.append("span").text("Number of iteration:").style("margin-right", "5px");
+  zs.append("input").attr("id", "n_iteration").style("width", "40px").attr("value", n_iteration)
+  .attr("type", "number").attr("min", "1").attr("max", "50")
+  .on("blur", () => update_n_iteration(d3.select("#n_iteration").property('value')));
 
-  update_chart();
-
-  function update_chart(update_all = true) {
-    const zone_id = edited_zone_id;
-    const lc_data = projection.lc_area.filter(
-      (d) =>
-        d.iteration == edited_period_id && d.zone_id == zone_id && d.area > 0
-    );
-    const plot = get_lc_conv_plot(
-      lc_data,
-      abacus_data.landcover,
-      open_edit,
-      scenario_act == null
-        ? null
-        : scenario_act.filter(
-            (d) => d.iteration == edited_period_id && d.zone_id == zone_id
-          )
-    );
-    h.select("#lc_chart").selectAll("*").remove("*");
-    h.select("#lc_chart")
-      .selectAll("g")
-      .data([,])
-      .enter()
-      .append((d) => plot);
-    if (update_all)
-      stacked_lc_area(
-        "#lc_area_chart",
-        b_projection.lc_sum_area.filter((d) => d.zone_id == zone_id),
-        projection.lc_sum_area.filter((d) => d.zone_id == zone_id),
-        abacus_data,
-        edited_period_id,
-        get_iteration_year,
-        select_period
-      );
+  //zone selection
+  if(abacus_data.zone) {
+    zs.append("label").attr("for", "zone").text("Select zone:").style("margin-left", "50px");
+    const zmenu = zs.append("select").attr("name", "zone").attr("id", "zone")
+      .on("change", () => select_zone(d3.select("#zone").property('value')));
+    zmenu.selectAll("option").data(abacus_data.zone).enter()
+      .append("option").text((d) => d.label).attr("value", (d) => d.zone_id);
+      edited_zone_id = abacus_data.zone[0].zone_id;
   }
 
-  function select_period(period_id) {
-    edited_period_id = period_id;
-    update_chart(false);
-  }
-
-  function select_zone(zone_id) {
-    edited_zone_id = zone_id;
-    update_chart();
-  }
-
-  // const c = h.append("dialog").attr("id", "dialog_tpm");
   const dialog = h.append("dialog").attr("id", "dialog_tpm");
-  // const edit_el = c.append("div").attr("id", "edit_tpm");
   dialog.append("div").attr("id", "edit_tpm");
 
   dialog
@@ -282,6 +348,116 @@ function show_lc_conversion(id_div, baseline_projection, LIB_PATH, updateValue) 
     .attr("class", "button_tpm")
     .text("Update")
     .on("click", update_tpm);
+
+
+  // planning_unit_map("#pu_map", abacus_data, edited_zone_id, select_zone);
+
+  if (scenario) {
+    scenario_tpm = scenario.tpm;
+    baseline = {tpm: scenario.baseline_tpm, area: scenario.baseline_area};
+    // projection = iterate_projection(baseline, scenario_tpm, n_iteration); 
+    // emission = get_carbon_emission(cstock, projection);  
+    trigger_scenario_update();
+    // updateValue(
+    //   "update:js_to_df",
+    //   JSON.stringify({
+    //     scenario: ({tpm:scenario_tpm, baseline_tpm:baseline.tpm, baseline_area:baseline.area}),
+    //     projection: projection,
+    //     emission: emission,
+    //   })
+    // ); 
+  } else {
+    baseline = baseline_projection.baseline;
+    projection = structuredClone(b_projection);
+    // emission = get_carbon_emission(cstock, projection);
+    emission = get_carbon_emission(cstock, projection, abacus_data.other_emission_factor, 
+      date_diff_year(
+      abacus_data.project.date1,
+      abacus_data.project.date2
+    ));
+
+    // update_chart();
+  }
+
+  // update_chart();
+
+  function update_chart(update_all = true) {
+    // console.log("* update chart: z="+edited_zone_id);
+    const zone_id = edited_zone_id;
+    const lc_data = projection.lc_area.filter(
+      (d) =>
+        d.iteration == edited_period_id && d.zone_id == zone_id && d.area > 0
+    );
+    edited_lc1_id_list = [];
+    if (scenario_tpm != null) {
+      const s = scenario_tpm.filter(
+        (d) => d.iteration == edited_period_id && d.zone_id == zone_id
+      );
+      if (typeof s != "undefined")
+        edited_lc1_id_list = Array.from(d3.union(s.map((d) => d.lc1_id)));
+    }
+    const plot = get_lc_conv_plot(
+      lc_data,
+      abacus_data.landcover,
+      open_edit,
+      edited_lc1_id_list,
+      width = width
+    );
+    h.select("#lc_chart").selectAll("*").remove("*");
+    h.select("#lc_chart")
+      .selectAll("g")
+      .data([,])
+      .enter()
+      .append(() => plot);
+    if (update_all)
+      stacked_lc_area(
+        "#lc_area_chart",
+        b_projection.lc_sum_area.filter((d) => d.zone_id == zone_id),
+        projection.lc_sum_area.filter((d) => d.zone_id == zone_id),
+        abacus_data.landcover,
+        edited_period_id,
+        get_iteration_year,
+        select_period,
+        width
+      );
+  }
+
+  function select_period(period_id) {
+    edited_period_id = period_id;
+    update_chart(false);
+  }
+
+  function select_zone(zone_id) {
+    edited_zone_id = zone_id;
+    update_chart();
+  }
+
+  function update_n_iteration(n) {
+    i =  Number(n);
+    if(!i) {
+      d3.select("#n_iteration").property('value', n_iteration);
+      return;
+    }
+    i = Math.max(1, Math.min(50, i));
+    d3.select("#n_iteration").property('value', i);
+    n_iteration = i;
+    // b_projection = iterate_projection(baseline, null, n_iteration);
+    
+
+    // projection = iterate_projection(baseline, scenario_tpm, n_iteration);
+    // emission = get_carbon_emission(cstock, projection);
+    // update_chart();
+    
+    // this.updateValue("baseline:js_to_df", JSON.stringify(baseline_projection))
+
+    baseline_projection = get_baseline_projection(abacus_data, n_iteration);
+    b_projection = baseline_projection.projection;
+    updateValue("baseline:js_to_df", JSON.stringify(baseline_projection))
+    trigger_scenario_update();
+    update_chart();
+  }
+
+  
 
   // const dialog = document.getElementById("dialog_tpm");
 
@@ -306,13 +482,14 @@ function show_lc_conversion(id_div, baseline_projection, LIB_PATH, updateValue) 
     );
 
     function is_locked_sc(lc2_id) {
-      if (scenario_act == null) return false;
-      const s = scenario_act.find(
+      if (scenario_tpm == null) return false;
+      const s = scenario_tpm.find(
         (d) =>
           d.iteration == edited_period_id &&
           d.zone_id == edited_zone_id &&
           d.lc1_id == edited_lc1_id &&
-          d.lc2_id == Number(lc2_id)
+          d.lc2_id == Number(lc2_id) &&
+          d.lock
       );
       if (typeof s == "undefined") return false;
       return true;
@@ -348,7 +525,8 @@ function show_lc_conversion(id_div, baseline_projection, LIB_PATH, updateValue) 
               d.zone_id == edited_zone_id &&
               d.lc1_id == edited_lc1_id
           );
-    lc_edit = edit_tpm(
+
+    lc_edit_obj = edit_tpm(
       "#edit_tpm",
       lc_tpm,
       lc_tpm_prev,
@@ -358,6 +536,8 @@ function show_lc_conversion(id_div, baseline_projection, LIB_PATH, updateValue) 
       edited_period_id == 0,
       LIB_PATH
     );
+    lc_edit = lc_edit_obj.lc_edit;
+    lc_edit_default = lc_edit_obj.lc_edit_default;
     dialog.node().showModal();
 
     const b = d3.select("#lc_chart").node().getBoundingClientRect();
@@ -368,23 +548,56 @@ function show_lc_conversion(id_div, baseline_projection, LIB_PATH, updateValue) 
     selectInput(lc2_id);
   }
 
+  function get_lc(lc_id) {
+    const l = baseline_projection.data.landcover.find((d) => d.lc_id == lc_id);
+    if (typeof l == "undefined") return "";
+    return l.label;
+  }
+
   function update_tpm() {
     dialog.node().close();
     let locked = lc_edit.filter((d) => d.lock);
+    // console.log(lc_edit);
     if (locked.length > 0) {
+      const plabel = get_period_label(edited_period_id);
+      let zone = "";
+
+      if (baseline_projection.data.zone) {
+        if (baseline_projection.data.zone.length > 0)
+          zone = baseline_projection.data.zone.find(
+            (d) => d.zone_id == edited_zone_id
+          ).label;
+      }
+      const lc1 = get_lc(edited_lc1_id);
+      function get_default_lc(lc2_id, v = "r") {
+        const lc = lc_edit_default.find((e) => e.lc2_id == lc2_id);
+        if (lc) {
+          if (v == "r") {
+            return lc.r;
+          } else if (v == "area") {
+            return lc.area;
+          }
+        }
+        return 0;
+      }
       let t = lc_edit.map((d) => ({
-        iteration: edited_period_id,
-        zone_id: edited_zone_id,
-        lc1_id: edited_lc1_id,
-        lc2_id: d.lc2_id,
-        r: d.r,
+        ...d,
+        period: plabel,
+        zone: zone,
+        lc1: lc1,
+        lc2: get_lc(d.lc2_id),
+        def_r: get_default_lc(d.lc2_id, "r"), //lc_edit_default.find((e) => e.lc2_id == d.lc2_id).r,
+        def_area: get_default_lc(d.lc2_id, "area"), //lc_edit_default.find((e) => e.lc2_id == d.lc2_id).area,
       }));
+
+      //check if there were new conversion from baseline
       const a1 = t.map((d) => d.lc2_id);
       const a2 = baseline.tpm
         .filter((d) => d.zone_id == edited_zone_id && d.lc1_id == edited_lc1_id)
         .map((d) => d.lc2_id);
       const diff = Array.from(d3.difference(a1, a2));
       if (diff.length > 0) {
+        //add baseline conversion if there were new conversion to keep the conversion sustain
         const add_lc = diff.map((d) => ({
           zone_id: edited_zone_id,
           lc1_id: edited_lc1_id,
@@ -419,7 +632,10 @@ function show_lc_conversion(id_div, baseline_projection, LIB_PATH, updateValue) 
           }));
           baseline.area = [...baseline.area, ...add_area];
         }
+        // console.log(t)
+        // console.log(baseline)
       }
+
       if (scenario_tpm == null) {
         scenario_tpm = t;
       } else {
@@ -433,28 +649,6 @@ function show_lc_conversion(id_div, baseline_projection, LIB_PATH, updateValue) 
         );
         scenario_tpm = [...scenario_tpm, ...t];
       }
-
-      let sclocked = locked.map((d) => ({
-        iteration: edited_period_id,
-        zone_id: edited_zone_id,
-        lc1_id: edited_lc1_id,
-        lc2_id: d.lc2_id,
-        label: "activity",
-        desc: "desc",
-      }));
-      if (scenario_act == null) {
-        scenario_act = sclocked;
-      } else {
-        scenario_act = scenario_act.filter(
-          (d) =>
-            !(
-              d.iteration == edited_period_id &&
-              d.zone_id == edited_zone_id &&
-              d.lc1_id == edited_lc1_id
-            )
-        );
-        scenario_act = [...scenario_act, ...sclocked];
-      }
     } else {
       scenario_tpm = scenario_tpm.filter(
         (d) =>
@@ -464,29 +658,56 @@ function show_lc_conversion(id_div, baseline_projection, LIB_PATH, updateValue) 
             d.lc1_id == edited_lc1_id
           )
       );
-      scenario_act = scenario_act.filter(
-        (d) =>
-          !(
-            d.iteration == edited_period_id &&
-            d.zone_id == edited_zone_id &&
-            d.lc1_id == edited_lc1_id
-          )
-      );
     }
-    projection = iterate_projection(baseline, scenario_tpm, n_iteration);
+    // projection = iterate_projection(baseline, scenario_tpm, n_iteration);
+    // emission = get_carbon_emission(cstock, projection);
+    // update_chart();
+    
+
+    trigger_scenario_update();
     update_chart();
+    // updateValue(
+    //   "update:js_to_df",
+    //   JSON.stringify({
+    //     scenario: ({tpm:scenario_tpm, baseline_tpm:baseline.tpm, baseline_area:baseline.area}),
+    //     // baseline: baseline,
+    //     projection: projection,
+    //     emission: emission,
+    //   })
+    // );
     lc_edit = null;
-    updateValue({scenario_tpm: scenario_tpm, scenario_act: scenario_act});
+  }
+
+  function trigger_scenario_update() {
+    projection = iterate_projection(baseline, scenario_tpm, n_iteration); 
+    // emission = get_carbon_emission(cstock, projection);  
+    emission = get_carbon_emission(cstock, projection, abacus_data.other_emission_factor, 
+      date_diff_year(
+      abacus_data.project.date1,
+      abacus_data.project.date2
+    ));
+    // update_chart();
+    updateValue(
+      "update:js_to_df",
+      JSON.stringify({
+        scenario: ({tpm:scenario_tpm, baseline_tpm:baseline.tpm, baseline_area:baseline.area}),
+        // baseline: baseline,
+        projection: projection,
+        emission: emission,
+      })
+    );
   }
 
   function cancel_tpm() {
     dialog.node().close();
   }
+
+  update_chart();
 }
 
-function get_lc_conv_plot(lc_data, landcovers, click_function, scenario_act) {
+function get_lc_conv_plot(lc_data, landcovers, click_function, edited_lc1, width = 700) {
   // Specify the chart’s dimensions.
-  const width = 700;
+  // const width = width;
   const marginTop = 80;
   const marginRight = 100;
   const marginBottom = 20;
@@ -511,6 +732,9 @@ function get_lc_conv_plot(lc_data, landcovers, click_function, scenario_act) {
     )
   ); // group by stack then series key
 
+  if (series.length == 0) return;
+  // console.log(series);
+
   const lc_area = Array.from(
     d3.rollup(
       lc_data,
@@ -519,9 +743,15 @@ function get_lc_conv_plot(lc_data, landcovers, click_function, scenario_act) {
     ),
     ([lc1_id, area]) => ({ lc1_id, area })
   );
-  const lc_labels = lc_area.map(
-    (d) => landcovers.find((o) => o.lc_id === d.lc1_id).label
-  );
+
+  function get_lc_label(lc_id) {
+    const lc = landcovers.find((o) => o.lc_id == lc_id);
+    if (typeof lc == "undefined") return "";
+    return lc.label;
+  }
+
+  const lc_labels = lc_area.map((d) => get_lc_label(d.lc1_id));
+
   marginLeft = d3.max(lc_labels, (d) => d.length) * 6 + 35;
 
   // Compute the height from the number of stacks.
@@ -539,15 +769,12 @@ function get_lc_conv_plot(lc_data, landcovers, click_function, scenario_act) {
     .range([marginTop, height - marginBottom])
     .padding(0.08);
 
-  const color = d3
-    .scaleOrdinal()
-    .domain(series.map((d) => d.key))
-    .range(
-      Array(series.length)
-        .fill()
-        .map((element, index) => d3.interpolateSinebow(index / series.length))
-    )
-    .unknown("#ccc");
+    
+  function get_color(lc_id) {
+    lc = landcovers.find((d) => d.lc_id == lc_id)
+    if(lc) return lc.color;
+    return "gray";
+  }
 
   // Create the SVG container.
   const svg = d3
@@ -563,7 +790,8 @@ function get_lc_conv_plot(lc_data, landcovers, click_function, scenario_act) {
     .selectAll()
     .data(series)
     .join("g")
-    .attr("fill", (d) => color(d.key))
+    // .attr("fill", (d) => color(d.key))
+    .attr("fill", (d) => get_color(d.key))
     .selectAll("rect")
     .data((D) => D.map((d) => ((d.key = D.key), d)))
     .join("rect")
@@ -587,34 +815,32 @@ function get_lc_conv_plot(lc_data, landcovers, click_function, scenario_act) {
   const yaxis = svg
     .append("g")
     .attr("transform", `translate(${marginLeft},0)`)
-    .style("font-size", "0.8em")
+    .style("font-size", "1em")
     .call(
       d3
         .axisLeft(y)
         .tickSizeOuter(0)
-        .tickFormat((d) => landcovers.find((o) => o.lc_id === d).label)
+        .tickFormat((d) => get_lc_label(d)) //landcovers.find((o) => o.lc_id === d).label
     )
     .selectAll(".tick")
     .on("pointerenter pointermove", pointermoved_y)
     .on("pointerleave", pointerleft_y)
     .on("click", (e, d) => trigger_click(d));
-  yaxis.selectAll("text").attr("id", (d) => {
-    return "lc" + d;
-  });
 
-  if (scenario_act != null) {
-    const edited_lc = scenario_act.map((d) => d.lc1_id);
-    yaxis
-      .selectAll("text")
-      .style("color", (d) => (edited_lc.includes(d) ? "blue" : "black"));
-  }
+  yaxis
+    .selectAll("text")
+    .style("color", (d) => (edited_lc1.includes(d) ? "red" : "black"))
+    .attr("id", (d) => {
+      return "lc" + d;
+    });
+
 
   // Append a label for each y ticks.
   svg
     .append("g")
     .attr("fill", "black")
     .attr("text-anchor", "start")
-    .style("font-size", "0.7em")
+    .style("font-size", "0.8em")
     .selectAll()
     .data(lc_area)
     .join("text")
@@ -628,11 +854,11 @@ function get_lc_conv_plot(lc_data, landcovers, click_function, scenario_act) {
     .append("text")
     .attr("class", "y label")
     .attr("text-anchor", "end")
-    .attr("x", marginLeft)
+    .attr("x", marginLeft+60)
     .attr("y", marginTop - 40)
     .attr("font-weight", 700)
-    .style("font-size", "1em")
-    .text("↓ Original land cover");
+    .style("font-size", "1.1em")
+    .text("↓ Converted land cover");
 
   // Add X axis label:
   svg
@@ -640,8 +866,8 @@ function get_lc_conv_plot(lc_data, landcovers, click_function, scenario_act) {
     .attr("text-anchor", "end")
     .attr("x", width - 10)
     .attr("y", marginTop - 40)
-    .style("font-size", "0.9em")
-    .text("Land cover conversion (ha)");
+    .style("font-size", "1em")
+    .text("Converted area (ha)");
 
   // Create the tooltip container.
   const tooltip = svg.append("g");
@@ -668,8 +894,8 @@ function get_lc_conv_plot(lc_data, landcovers, click_function, scenario_act) {
     d3.select(this).style("cursor", "pointer");
 
     // const d = event.target.__data__;
-    const lc_x_label = landcovers.find((o) => o.lc_id === edata.key).label;
-    const lc_y_label = landcovers.find((o) => o.lc_id === edata.data[0]).label;
+    const lc_x_label = landcovers.find((o) => o.lc_id == edata.key).label;
+    const lc_y_label = landcovers.find((o) => o.lc_id == edata.data[0]).label;
     const area = edata.data[1].get(edata.key).area;
     const r = edata.data[1].get(edata.key).r;
 
@@ -746,7 +972,7 @@ function get_lc_conv_plot(lc_data, landcovers, click_function, scenario_act) {
       .filter((d) => d.lc1_id == lc_id && d.area > 0)
       .map((d) => ({
         ...d,
-        label: landcovers.find((e) => e.lc_id === d.lc2_id).label,
+        label: landcovers.find((e) => e.lc_id == d.lc2_id).label,
       }));
     const plot = get_single_lc_plot(
       lc_single,
@@ -977,11 +1203,18 @@ function edit_tpm(
     return a;
   }
 
+  function get_new_lc(lc2_id) {
+    return {iteration: lc_edit[0].iteration, zone_id: lc_edit[0].zone_id, lc1_id: lc1_id, lc2_id: lc2_id, area: 0, r: 0, lock: false};
+  }
+
   function find_edit(lc2_id) {
     let a = lc_edit.find((d) => d.lc2_id == lc2_id);
+    
     if (typeof a == "undefined") {
-      a = { lc2_id: lc2_id, area: 0, r: 0 };
-      lc_edit.push(a);
+      console.log("find edit null:" + lc2_id)
+      // a = {iteration: lc_edit[0].iteration, zone_id: lc_edit[0].zone_id, lc1_id: lc1_id, lc2_id: lc2_id, area: 0, r: 0, lock: false};
+      // lc_edit.push(a);
+      lc_edit.push(get_new_lc(lc2_id));
     }
     return a;
   }
@@ -1082,7 +1315,8 @@ function edit_tpm(
 
   function add_lc(e) {
     const lc2_id = Number(e.target.id.substring(4));
-    lc_edit.push({ lc2_id: lc2_id, area: 0, r: 0, lock: false });
+    // lc_edit.push({ lc2_id: lc2_id, area: 0, r: 0, lock: false });
+    lc_edit.push(get_new_lc(lc2_id));
     add_rows(row_content, [lc2_id]);
   }
 
@@ -1299,7 +1533,7 @@ function edit_tpm(
     }
   };
 
-  return lc_edit;
+  return { lc_edit: lc_edit, lc_edit_default: lc_edit_default };
 }
 
 function selectInput(lc_id) {
@@ -1313,31 +1547,24 @@ function stacked_lc_area(
   div_id,
   bs_area,
   sc_area,
-  abacus_data,
+  landcover,
   selected_period = 0,
   get_iteration_year,
-  click_period = null
+  click_period = null,
+  width = 300
 ) {
   // Specify the chart’s dimensions.
-  const width = 300;
-  const height = 200;
+  // const width = 300;
+ 
+  const height = 250;
   const marginTop = 20;
   const marginRight = 20;
-  const marginBottom = 50;
-  const marginLeft = 40;
+  const marginBottom = 60;
+  const marginLeft = 30;
 
   const n_iteration = d3.max(bs_area.map((d) => d.iteration));
   let line_data = sc_area.filter((d) => d.lc1_id == 0);
 
-  // function get_iteration_year(i) {
-  //   // const p = abacus_data.baseline_period;
-  //   const p = [
-  //     abacus_data.project.baseyear0[0],
-  //     abacus_data.project.baseyear1[0],
-  //   ];
-  //   if (i <= 1) return p[i];
-  //   return p[1] + (i - 1) * (p[1] - p[0]);
-  // }
 
   // Determine the series that need to be stacked.
   const series = d3
@@ -1371,6 +1598,11 @@ function stacked_lc_area(
     .domain(series.map((d) => d.key))
     .range(d3.schemeTableau10);
 
+    function get_color(lc_id) {
+      lc = landcover.find((d) => d.lc_id == lc_id)
+      if(lc) return lc.color;
+      return "gray";
+    }
   // Construct an area shape.
   const area = d3
     .area()
@@ -1408,7 +1640,8 @@ function stacked_lc_area(
     .selectAll()
     .data(series)
     .join("path")
-    .attr("fill", (d) => color(d.key))
+    // .attr("fill", (d) => color(d.key))
+    .attr("fill", (d) => get_color(d.key))
     .attr("d", area)
     .on("pointerenter pointermove", pointermoved_y)
     .on("pointerleave", pointerleft_y)
@@ -1436,20 +1669,20 @@ function stacked_lc_area(
     .attr("x", width - marginRight)
     .attr("y", 15)
     .text("Projected land cover area (ha)")
-    .style("font-size", "0.7em")
+    .style("font-size", "0.9em")
     .attr("text-anchor", "end");
   svg
     .append("text")
     .attr("x", marginLeft)
     .attr("y", height - 5)
     .text("Selected period:")
-    .style("font-size", "0.9em");
+    .style("font-size", "1em");
   const periodtxt = svg
     .append("text")
     .attr("x", 145)
     .attr("y", height - 5)
     .text("0000")
-    .style("font-size", "0.9em")
+    .style("font-size", "1em")
     .attr("font-weight", 700);
 
   const markerBoxWidth = 3;
@@ -1483,9 +1716,9 @@ function stacked_lc_area(
     const line = svg
       .append("line")
       .attr("x1", 0)
-      .attr("y1", height - 25)
+      .attr("y1", height - 35)
       .attr("x2", 0)
-      .attr("y2", height - 25)
+      .attr("y2", height - 35)
       .style("stroke", color)
       .attr("stroke-width", 3)
       .attr("fill", color)
@@ -1515,12 +1748,15 @@ function stacked_lc_area(
   const selected_rect = define_rect("black");
 
   function get_lc_label(lc_id) {
-    return abacus_data.landcover.find((o) => o.lc_id === lc_id).label;
+    const lc = landcover.find((o) => o.lc_id == lc_id);
+    if (typeof lc == "undefined") return "";
+    return lc.label;
   }
+
   const tooltip = d3
     .select(div_id)
     .append("div")
-    .attr("id", "tooltip_area")
+    .attr("id", "tooltip_area").style("width", width*0.8+"px")
     .style("display", "none");
 
   function pointerleft_y(event, edata) {
@@ -1539,7 +1775,9 @@ function stacked_lc_area(
       line_data_base,
       line_data,
       get_iteration_year,
-      get_lc_label(edata.key)
+      get_lc_label(edata.key),
+      get_color(edata.key),
+      width
     );
     event.target.setAttribute("stroke", "black");
     pointermoved_x(event);
@@ -1599,15 +1837,18 @@ function line_plot_area(
   bs_area,
   sc_area,
   get_iteration_year,
-  lc_label
+  lc_label,
+  lc_color,
+  width = 300
 ) {
   // Specify the chart’s dimensions.
-  const width = 300;
+  // const width = 300;
+  width = width*0.8;
   const height = 200;
-  const marginTop = 30;
-  const marginRight = 20;
-  const marginBottom = 20;
-  const marginLeft = 55;
+  const marginTop = 40;
+  const marginRight = 30;
+  const marginBottom = 50;
+  const marginLeft = 70;
 
   const n_iteration = d3.max(bs_area.map((d) => d.iteration));
 
@@ -1636,7 +1877,7 @@ function line_plot_area(
     .attr("width", width)
     .attr("height", height)
     .attr("viewBox", [0, 0, width, height])
-    .attr("style", "max-width: 100%; height: auto;");
+    .attr("style", "max-width: 100%; height: auto; color:white;");
 
   svg
     .append("g")
@@ -1675,54 +1916,63 @@ function line_plot_area(
     .attr("stroke-width", 1.5)
     .attr("d", line(sc_area));
 
+
+    svg.append("circle")
+    .attr("cx", width - 35)
+    .attr("cy", 18)
+    .attr("r", 12)
+    .style("fill", lc_color);
   // Add X axis label:
   svg
     .append("text")
     .attr("text-anchor", "end")
-    .attr("x", width - 20)
-    .attr("y", marginTop - 10)
+    .attr("x", width - 60)
+    .attr("y", marginTop - 20)
     .style("font-size", "0.9em")
+    .style("fill", "white")
     .text(lc_label);
+
 
   svg
     .append("text")
     .attr("text-anchor", "end")
     .attr("x", -marginTop)
-    .attr("y", 15)
+    .attr("y", 25)
     .attr("transform", "rotate(-90)")
     .style("font-size", "0.8em")
+    .style("fill", "white")
     .text("Total area (ha)");
 
   //legend
   svg
     .append("circle")
-    .attr("cx", 160)
-    .attr("cy", 140)
+    .attr("cx", 80)
+    .attr("cy", 180)
     .attr("r", 4)
     .style("fill", "red");
   svg
     .append("circle")
-    .attr("cx", 160)
-    .attr("cy", 155)
+    .attr("cx", 220)
+    .attr("cy", 180)
     .attr("r", 4)
     .style("fill", "lightgrey");
 
   svg
     .append("text")
-    .attr("x", 170)
-    .attr("y", 140)
+    .attr("x", 90)
+    .attr("y", 180)
     .text("scenario projection")
     .style("font-size", "0.8em")
     .attr("alignment-baseline", "middle")
-    .style("fill", "grey");
+    .style("fill", "white");
   svg
     .append("text")
-    .attr("x", 170)
-    .attr("y", 155)
+    .attr("x", 230)
+    .attr("y", 180)
     .text("baseline projection")
     .style("font-size", "0.8em")
     .attr("alignment-baseline", "middle")
-    .style("fill", "grey");
+    .style("fill", "white");
 }
 
 function planning_unit_map(
@@ -1763,6 +2013,8 @@ function planning_unit_map(
   );
 
   function get_zone_label(zone_id) {
+    if (typeof abacus_data.zone == "undefined") return "";
+    // console.log(abacus_data.zone)
     const z = abacus_data.zone.find((e) => e.zone_id == zone_id);
     if (typeof z == "undefined") return "";
     return z.label;
