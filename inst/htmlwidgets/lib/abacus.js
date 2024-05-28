@@ -1780,6 +1780,10 @@ function stacked_lc_area(
       width
     );
     event.target.setAttribute("stroke", "black");
+    event.target.setAttribute("stroke-width", 2);
+    const { x: xp, y: yp, width: wp, height: hp } = event.target.getBBox();
+    var rect = document.querySelector(div_id).getBoundingClientRect();
+    d3.select("#tooltip_area").style("top", (rect.top-rect.height+yp+hp+10) +"px");
     pointermoved_x(event);
   }
 
