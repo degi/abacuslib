@@ -1,5 +1,6 @@
 
 
+
 some_to_numeric <- function(x) {
   suppressWarnings(y <- as.numeric(x))
   ylist <- as.list(y)
@@ -112,22 +113,22 @@ read.abacus <- function(filepath) {
           }
         },
         LANDCOVER = {
-          h <- c("lc_id", "label",	"description")
+          h <- c("lc_id", "label", "description")
           dlist$landcover <-
             table_element(dlist$landcover, line, h)
         },
         ZONE = {
-          h <- c("zone_id", "label",	"description")
+          h <- c("zone_id", "label", "description")
           dlist$zone <- table_element(dlist$zone, line, h)
         },
         LANDCOVER_CHANGE = {
-          h <- c("zone_id", "lc1_id",	"lc2_id",	"area")
+          h <- c("zone_id", "lc1_id", "lc2_id", "area")
           dlist$landcover_change <-
             table_element(dlist$landcover_change, line, h)
 
         },
         CARBONSTOCK = {
-          h <- c("zone_id", "lc_id",	"c")
+          h <- c("zone_id", "lc_id", "c")
           dlist$carbonstock <-
             table_element(dlist$carbonstock, line, h)
         },
@@ -151,7 +152,7 @@ read.abacus <- function(filepath) {
                 var_element(dlist$costbenefit[[id]], line)
             } else if (is_table) {
               id <- length(dlist$costbenefit)
-              h <- c("zone_id", "lc_id",	"npv")
+              h <- c("zone_id", "lc_id", "npv")
               dlist$costbenefit[[id]][[table_name]] <-
                 table_element(dlist$costbenefit[[id]][[table_name]], line, h)
             }
@@ -243,15 +244,26 @@ read.abacus <- function(filepath) {
 #' @import jsonlite
 #'
 #' @examples plot(abacus_data)
-plot.abacus <- function(data, scenario = NULL, project_id = 1) {
+plot.abacus <- function(data,
+                        scenario = NULL,
+                        project_id = 1,
+                        selected_iteration = 1,
+                        selected_zone = 0,
+                        selected_lc = 0) {
   s <- NULL
-  if(data$version == 1) {
+  if (data$version == 1) {
     j <- toJSON(data$project_list[[project_id]], force = TRUE)
-  } else if(data$version == 2) {
+  } else if (data$version == 2) {
     j <- toJSON(data, force = TRUE)
     s <- toJSON(scenario, force = TRUE)
   }
-  abacuslib(j, scenario = s)
+  abacuslib(
+    j,
+    scenario = s,
+    selected_iteration = selected_iteration,
+    selected_zone = selected_zone,
+    selected_lc = selected_lc
+  )
 }
 
 #' Convert land cover changes data into matrix format
@@ -279,8 +291,7 @@ as.matrix.abacus <-
     if (nrow(lcz) == 0) {
       return()
     }
-    m <- cast(lcz, lc1_id ~ lc2_id, mean, value = "area",
-              fill = NA)
+    m <- cast(lcz, lc1_id ~ lc2_id, mean, value = "area", fill = NA)
     return(as.matrix(m, dimnames <- list(m[, 1], names(m)[-1])))
   }
 
@@ -306,17 +317,17 @@ as.matrix.abacus <-
 #'
 #' @examples
 abacus <- function(title = NULL,
-                           description = NULL,
-                           date1 = NULL,
-                           date2  = NULL,
-                           landcover,
-                           landcover_change,
-                           zone = NULL,
-                           carbonstock = NULL,
-                            other_emission_factor = NULL,
-                           scenario = NULL,
-                           n_iteration = 1,
-                           costbenefit = NULL) {
+                   description = NULL,
+                   date1 = NULL,
+                   date2  = NULL,
+                   landcover,
+                   landcover_change,
+                   zone = NULL,
+                   carbonstock = NULL,
+                   other_emission_factor = NULL,
+                   scenario = NULL,
+                   n_iteration = 1,
+                   costbenefit = NULL) {
   dlist <- list()
   dlist$project <- list()
   dlist$project$title <- title
@@ -339,5 +350,3 @@ abacus <- function(title = NULL,
   class(dlist) <- "abacus"
   return(dlist)
 }
-
-

@@ -4,7 +4,16 @@
 \alias{abacuslib}
 \title{REDD Abacus chart}
 \usage{
-abacuslib(data, scenario = NULL, width = NULL, height = NULL, elementId = NULL)
+abacuslib(
+  data,
+  scenario = NULL,
+  selected_iteration = 1,
+  selected_zone = 0,
+  selected_lc = 0,
+  width = NULL,
+  height = NULL,
+  elementId = NULL
+)
 }
 \description{
 a compilation of chart for REDD Abacus

@@ -17,7 +17,8 @@ HTMLWidgets.widget({
     const chart_id = "luchart";
     return {
       renderValue: function (params) {
-        
+        // console.log("params")
+        // console.log(params.selected_iteration)
         if (HTMLWidgets.shinyMode) {
           LIB_PATH = IMAGE_LIB_WEB;
         } else {
@@ -25,27 +26,37 @@ HTMLWidgets.widget({
         }
 
         const abacus_data = params.data;
-        if(abacus_data.version == 2) {
+        if (abacus_data.version == 2) {
           abacus_data.project.date1 = parseDate(abacus_data.project.date1[0]);
           abacus_data.project.date2 = parseDate(abacus_data.project.date2[0]);
         }
-        
-        const baseline_projection = get_baseline_projection(abacus_data, abacus_data.project.n_iteration[0]);
-        // console.log(baseline_projection);
-        this.updateValue("baseline:js_to_df", JSON.stringify(baseline_projection))
+
+        const baseline_projection = get_baseline_projection(
+          abacus_data,
+          abacus_data.project.n_iteration[0]
+        );
+        this.updateValue(
+          "baseline:js_to_df",
+          JSON.stringify(baseline_projection)
+        );
         let chart = document.createElement("div");
         chart.id = chart_id;
         el.appendChild(chart);
-        let sc = null;
-        if(params.scenario.tpm) {
-          sc = params.scenario;
-        }
+        // let sc = null;
+        // if (params.scenario.tpm) {
+        //   sc = params.scenario;
+        // }
+        // console.log(params.scenario);
         show_lc_conversion(
           chart_id,
           baseline_projection,
           LIB_PATH,
           this.updateValue,
-          sc
+          // sc,
+          params.scenario,
+          params.selected_iteration,
+          params.selected_zone,
+          params.selected_lc
         );
       },
 

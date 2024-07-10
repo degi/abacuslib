@@ -5,12 +5,21 @@
 #' @import htmlwidgets
 #'
 #' @export
-abacuslib <- function(data, scenario = NULL, width = NULL, height = NULL, elementId = NULL) {
-
+abacuslib <- function(data,
+                      scenario = NULL,
+                      selected_iteration = 1,
+                      selected_zone = 0,
+                      selected_lc = 0,
+                      width = NULL,
+                      height = NULL,
+                      elementId = NULL) {
   # forward options using x
   x = list(
     data = data,
-    scenario = scenario
+    scenario = scenario,
+    selected_iteration = selected_iteration,
+    selected_zone = selected_zone,
+    selected_lc = selected_lc
   )
 
   # create widget
@@ -41,13 +50,19 @@ abacuslib <- function(data, scenario = NULL, width = NULL, height = NULL, elemen
 #' @name abacuslib-shiny
 #'
 #' @export
-abacuslibOutput <- function(outputId, width = '100%', height = '400px'){
+abacuslibOutput <- function(outputId,
+                            width = '100%',
+                            height = '400px') {
   htmlwidgets::shinyWidgetOutput(outputId, 'abacuslib', width, height, package = 'abacuslib')
 }
 
 #' @rdname abacuslib-shiny
 #' @export
-renderAbacuslib <- function(expr, env = parent.frame(), quoted = FALSE) {
-  if (!quoted) { expr <- substitute(expr) } # force quoted
+renderAbacuslib <- function(expr,
+                            env = parent.frame(),
+                            quoted = FALSE) {
+  if (!quoted) {
+    expr <- substitute(expr)
+  } # force quoted
   htmlwidgets::shinyRenderWidget(expr, abacuslibOutput, env, quoted = TRUE)
 }

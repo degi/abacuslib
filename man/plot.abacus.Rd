@@ -4,7 +4,14 @@
 \alias{plot.abacus}
 \title{Plot the abacus land cover change projection}
 \usage{
-\method{plot}{abacus}(data, scenario = NULL, project_id = 1)
+\method{plot}{abacus}(
+  data,
+  scenario = NULL,
+  project_id = 1,
+  selected_iteration = 1,
+  selected_zone = 0,
+  selected_lc = 0
+)
 }
 \arguments{
 \item{data}{abacus data}
