@@ -19,9 +19,6 @@ abacus(
   costbenefit = NULL
 )
 }
-\arguments{
-\item{costbenefit}{}
-}
 \description{
 Generate Abacus object
 }

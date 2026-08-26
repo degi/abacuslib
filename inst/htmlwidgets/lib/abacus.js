@@ -77,7 +77,7 @@ function iterate_projection(baseline, scenario = null, n = 1) {
   function get_sc_r(def_r, iteration = 0, zone_id = 0, lc1_id = 0, lc2_id = 0) {
     if (scenario == null) return def_r;
     if (!Array.isArray(scenario)) return def_r;
-    
+
     // console.log(scenario);
     //find the r scenario from the earlier iteration
     const sc = scenario.filter(
@@ -256,7 +256,10 @@ function show_lc_conversion(
   selected_lc = 0,
   width = 700
 ) {
+  console.log(baseline_projection);
   var n_iteration = baseline_projection.iteration;
+  console.log(n_iteration);
+
   const abacus_data = baseline_projection.data;
   const cstock = abacus_data.carbonstock.filter((d) => d.scenario_id == 0);
   var scenario_tpm = null;
@@ -287,7 +290,7 @@ function show_lc_conversion(
   if (selected_lc) {
     edited_lc1_id = selected_lc;
   }
-  
+
   if (abacus_data.version == 2) {
     period_yr = date_diff_year(
       abacus_data.project.date1,
@@ -495,6 +498,8 @@ function show_lc_conversion(
     i = Math.max(1, Math.min(50, i));
     d3.select("#n_iteration").property("value", i);
     n_iteration = i;
+    console.log("update_n_iteration");
+    console.log(n_iteration);
     baseline_projection = get_baseline_projection(abacus_data, n_iteration);
     b_projection = baseline_projection.projection;
     updateValue("baseline:js_to_df", JSON.stringify(baseline_projection));
@@ -1015,7 +1020,7 @@ function get_lc_conv_plot(
     text.attr("transform", `translate(${-w / 2},${-h})`);
     path.attr(
       "d",
-      `M${-5},-5H-5l5,5l5,-5H${w / 2}q10,0,10,-10v${-h}q0,-10,-10,-10, 
+      `M${-5},-5H-5l5,5l5,-5H${w / 2}q10,0,10,-10v${-h}q0,-10,-10,-10,
                 h-${w},q-10,0,-10,10,v${h},q0,10,10,10,z`
     );
   }
@@ -1471,7 +1476,7 @@ function edit_tpm(
 
   function add_lc(lc2_id) {
     const new_lc = get_new_lc(lc2_id);
-    // lc_edited = 
+    // lc_edited =
     add_row_tpm(new_lc);
     const tlist = d3.select("#tpm_list");
     add_rows(tlist, [lc2_id]);
@@ -1498,7 +1503,7 @@ function edit_tpm(
   //   // n = structuredClone(new_lc);
   //   // n.carbonstock = c;
   //   // new_landcovers.push(n);
-    
+
   //   // add_lc(new_id);
   // }
 

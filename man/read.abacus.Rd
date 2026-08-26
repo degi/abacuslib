@@ -6,9 +6,6 @@
 \usage{
 read.abacus(filepath)
 }
-\arguments{
-\item{filepath}{}
-}
 \value{
 list of REDD Abacus data
 }
