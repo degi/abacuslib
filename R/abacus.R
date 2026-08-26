@@ -276,7 +276,7 @@ plot.abacus <- function(data,
 #'
 #' @return land cover change in matrix format
 #' @export
-#' @import reshape
+#' @import reshape2
 #'
 #' @examples as.matrix(abacus_data)
 as.matrix.abacus <-
