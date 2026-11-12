@@ -6,6 +6,9 @@
 \usage{
 read.abacus(filepath)
 }
+\arguments{
+\item{filepath}{Character. Path to the REDD Abacus data file (version 1.2.0 format).}
+}
 \value{
 list of REDD Abacus data
 }

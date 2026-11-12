@@ -4,10 +4,10 @@
 \alias{as.matrix.abacus}
 \title{Convert land cover changes data into matrix format}
 \usage{
-\method{as.matrix}{abacus}(data, project_id = 1, zone_id = 0, iteration = 0, scenario_id = 0)
+\method{as.matrix}{abacus}(x, project_id = 1, zone_id = 0, iteration = 0, scenario_id = 0, ...)
 }
 \arguments{
-\item{data}{abacus data}
+\item{x}{abacus data}
 
 \item{project_id}{selected project ID (default = 1)}
 
@@ -16,6 +16,8 @@
 \item{iteration}{selected iteration (default = 0 as baseline)}
 
 \item{scenario_id}{selected scenario (default = 0 as baseline)}
+
+\item{...}{additional arguments passed to the generic}
 }
 \value{
 land cover change in matrix format
@@ -24,5 +26,13 @@ land cover change in matrix format
 Convert land cover changes data into matrix format
 }
 \examples{
+abacus_data <- structure(
+  list(project_list = list(list(
+    landcover_change = data.frame(
+      zone_id = 0, lc1_id = 1, lc2_id = 1, area = 1
+    )
+  ))),
+  class = "abacus"
+)
 as.matrix(abacus_data)
 }

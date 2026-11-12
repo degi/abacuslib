@@ -5,18 +5,29 @@
 \title{Plot the abacus land cover change projection}
 \usage{
 \method{plot}{abacus}(
-  data,
+  x,
   scenario = NULL,
   project_id = 1,
   selected_iteration = 1,
   selected_zone = 0,
-  selected_lc = 0
+  selected_lc = 0,
+  ...
 )
 }
 \arguments{
-\item{data}{abacus data}
+\item{x}{abacus data}
+
+\item{scenario}{optional scenario list}
 
 \item{project_id}{selected project index}
+
+\item{selected_iteration}{selected iteration}
+
+\item{selected_zone}{selected zone ID}
+
+\item{selected_lc}{selected land cover ID}
+
+\item{...}{additional arguments passed to the plot method}
 }
 \value{
 plot
@@ -25,5 +36,9 @@ plot
 Plot the abacus land cover change projection
 }
 \examples{
-plot(abacus_data)
+abacus_data <- abacus(
+  landcover = data.frame(lc_id = 1, label = "Forest", description = "Forest"),
+  landcover_change = data.frame(zone_id = 0, lc1_id = 1, lc2_id = 1, area = 1)
+)
+if (interactive()) plot(abacus_data)
 }

@@ -1,6 +1,7 @@
 
 
 
+# Helpers for parsing tab-separated values and preserving non-numeric cells.
 some_to_numeric <- function(x) {
   suppressWarnings(y <- as.numeric(x))
   ylist <- as.list(y)
@@ -12,7 +13,6 @@ some_to_numeric <- function(x) {
 
 table_element <- function(dlist, linestr, header) {
   if (substring(linestr, 1, 2) == "//") {
-    # return(dlist)
     columns <- unlist(strsplit(trimws(substring(linestr, 3)), "\t"))
     df = data.frame(matrix(nrow = 0, ncol = length(columns)))
     colnames(df) = columns
@@ -20,8 +20,6 @@ table_element <- function(dlist, linestr, header) {
   } else {
     df <- dlist
     r <- unlist(strsplit(linestr, "\t"))
-    # print(r)
-    # print(df)
     if (length(r) > 0) {
       if (is.null(df)) {
         df = data.frame(matrix(nrow = 0, ncol = length(header)))
@@ -51,9 +49,10 @@ var_element <- function(dlist, linestr) {
   return(dlist)
 }
 
+# Parse a version 1.2.0 file into normalized Abacus project tables.
 #' Read REDD Abacus file data into list object
 #'
-#' @param filepath
+#' @param filepath Character. Path to the REDD Abacus data file (version 1.2.0 format).
 #'
 #' @return list of REDD Abacus data
 #' @export
@@ -71,8 +70,6 @@ read.abacus <- function(filepath) {
   table_name <- NULL
   while (TRUE) {
     line <- trimws(readLines(con, n = 1))
-    # print(line)
-    # message(paste(line))
     if (length(line) == 0) {
       break
     }
@@ -83,7 +80,6 @@ read.abacus <- function(filepath) {
       switch(
         section,
         GENERAL = {
-          # dlist$general <- var_element(dlist$general, line)
           plist$general <- var_element(plist$general, line)
         },
         PROJECT = {
@@ -159,9 +155,6 @@ read.abacus <- function(filepath) {
           }
         },
         SCENARIO = {
-          # message(paste(line))
-          # print(paste("### line: ", line))
-
           if (substring(line, 1, 1) == "*") {
             is_table = TRUE
             table_name <- tolower(trimws(substring(line, 2)))
@@ -179,14 +172,12 @@ read.abacus <- function(filepath) {
                   dlist$scenario <- append(dlist$scenario, list(list()))
                 }
               }
-              # print(dlist$scenario)
               if (is.null(dlist$scenario))
                 dlist$scenario <- list()
               if (d[1] == "label") {
                 dlist$scenario[[length(dlist$scenario) + 1]] <- list()
               }
               id <- length(dlist$scenario)
-              # print(paste("*** id:", id))
               dlist$scenario[[id]] <-
                 var_element(dlist$scenario[[id]], line)
 
@@ -206,13 +197,11 @@ read.abacus <- function(filepath) {
                 table_element(dlist$scenario[[id]][[table_name]], line, h)
             }
 
-            # print(dlist$scenario)
           }
         }
       )
     }
   }
-  # return(dlist)
   if (is.null(dlist$project$n_iteration)) {
     dlist$project$n_iteration <- dlist$project$iteration
     dlist$project$iteration <- NULL
@@ -224,7 +213,6 @@ read.abacus <- function(filepath) {
   names(dlist$carbonstock)[names(dlist$carbonstock) == "area"] <-
     "c"
   plist$project_list = append(plist$project_list, list(dlist))
-  # print(plist)
   close(con)
   if (is.null(plist$general$file_version)) {
     return(NULL)
@@ -234,32 +222,42 @@ read.abacus <- function(filepath) {
   return(plist)
 }
 
+# S3 methods for plotting and converting parsed projects to matrices.
 #' Plot the abacus land cover change projection
 #'
-#' @param data abacus data
+#' @param x abacus data
 #' @param project_id selected project index
+#' @param scenario optional scenario list
+#' @param selected_iteration selected iteration
+#' @param selected_zone selected zone ID
+#' @param selected_lc selected land cover ID
+#' @param ... additional arguments passed to the plot method
 #'
 #' @return plot
 #' @export
 #' @import jsonlite
 #'
-#' @examples plot(abacus_data)
-plot.abacus <- function(data,
+#' @examples
+#' abacus_data <- abacus(
+#'   landcover = data.frame(lc_id = 1, label = "Forest", description = "Forest"),
+#'   landcover_change = data.frame(zone_id = 0, lc1_id = 1, lc2_id = 1, area = 1)
+#' )
+#' if (interactive()) plot(abacus_data)
+plot.abacus <- function(x,
                         scenario = NULL,
                         project_id = 1,
                         selected_iteration = 1,
                         selected_zone = 0,
-                        selected_lc = 0) {
-  s <- NULL
-  if (data$version == 1) {
-    j <- toJSON(data$project_list[[project_id]], force = TRUE)
-  } else if (data$version == 2) {
-    j <- toJSON(data, force = TRUE)
-    s <- toJSON(scenario, force = TRUE)
+                        selected_lc = 0,
+                        ...) {
+  data <- x
+  if (attr(x, "version") == 1 || (is.list(x) && !is.null(x$version) && x$version == 1)) {
+    data <- x$project_list[[project_id]]
+    data$version <- 1
   }
-  abacuslib(
-    j,
-    scenario = s,
+  scenario_editor(
+    data,
+    scenario = scenario,
     selected_iteration = selected_iteration,
     selected_zone = selected_zone,
     selected_lc = selected_lc
@@ -268,54 +266,67 @@ plot.abacus <- function(data,
 
 #' Convert land cover changes data into matrix format
 #'
-#' @param data abacus data
+#' @param x abacus data
 #' @param project_id selected project ID (default = 1)
 #' @param zone_id selected zone ID (default = 0)
 #' @param iteration selected iteration (default = 0 as baseline)
 #' @param scenario_id selected scenario (default = 0 as baseline)
+#' @param ... additional arguments passed to the generic
 #'
 #' @return land cover change in matrix format
 #' @export
-#' @import reshape2
+#' @import tidyr
 #'
-#' @examples as.matrix(abacus_data)
+#' @examples
+#' abacus_data <- structure(
+#'   list(project_list = list(list(
+#'     landcover_change = data.frame(
+#'       zone_id = 0, lc1_id = 1, lc2_id = 1, area = 1
+#'     )
+#'   ))),
+#'   class = "abacus"
+#' )
+#' as.matrix(abacus_data)
 as.matrix.abacus <-
-  function(data,
+  function(x,
            project_id = 1,
            zone_id = 0,
            iteration = 0,
-           scenario_id = 0) {
-    p <- data$project_list[[project_id]]
+           scenario_id = 0,
+           ...) {
+    p <- x$project_list[[project_id]]
     lcc <- p$landcover_change
     lcz <- lcc[lcc$zone_id == zone_id, c("lc1_id", "lc2_id", "area")]
-    if (nrow(lcz) == 0) {
-      return()
-    }
-    m <- cast(lcz, lc1_id ~ lc2_id, mean, value = "area", fill = NA)
-    return(as.matrix(m, dimnames <- list(m[, 1], names(m)[-1])))
+     if (nrow(lcz) == 0) {
+       return(matrix(NA_real_, 0, 0))
+     }
+    m <- tidyr::pivot_wider(lcz, names_from = "lc2_id", values_from = "area", values_fn = mean, values_fill = NA_real_)
+    m <- as.data.frame(m)
+    return(as.matrix(m, dimnames = list(m[, 1], names(m)[-1])))
   }
 
 
 
 
+# Constructor for the current in-memory Abacus project format.
 #' Generate Abacus object
 #'
-#' @param title
-#' @param description
-#' @param date1
-#' @param date2
-#' @param landcover
-#' @param landcover_change
-#' @param zone
-#' @param carbonstock
-#' @param scenario
-#' @param n_iteration
-#' @param costbenefit
+#' @param title Character. Project title.
+#' @param description Character. Project description.
+#' @param date1 Date or character. Start date of the analysis period.
+#' @param date2 Date or character. End date of the analysis period.
+#' @param landcover Data frame of land cover classes (columns: lc_id, label, description).
+#' @param landcover_change Data frame of land cover transitions (columns: zone_id, lc1_id, lc2_id, area).
+#' @param zone Data frame of spatial zones (columns: zone_id, label, description). Default NULL.
+#' @param carbonstock Data frame of carbon stocks per land cover class (columns: zone_id, lc_id, c). Default NULL.
+#' @param other_emission_factor Optional list of additional emission factors. Default NULL.
+#' @param scenario List of scenario definitions. Default NULL.
+#' @param n_iteration Integer. Number of Monte Carlo iterations. Default 1.
+#' @param costbenefit List of cost-benefit data per intervention. Default NULL.
 #'
-#' @return
+#' @return An object of class \code{abacus} (a list with version 2 structure).
 #' @export
 #'
-#' @examples
 abacus <- function(title = NULL,
                    description = NULL,
                    date1 = NULL,
@@ -340,9 +351,11 @@ abacus <- function(title = NULL,
   dlist$landcover_change <- landcover_change
   dlist$zone <- zone
   dlist$carbonstock <- carbonstock
-  dlist$carbonstock$scenario_id <- 0
-  dlist$carbonstock$zone_id <- 0
-  dlist$carbonstock$iteration_id <- 0
+  if (!is.null(carbonstock)) {
+    dlist$carbonstock$scenario_id <- 0
+    dlist$carbonstock$zone_id <- 0
+    dlist$carbonstock$iteration_id <- 0
+  }
   dlist$other_emission_factor <- other_emission_factor
   dlist$scenario <- scenario
   dlist$costbenefit <- costbenefit

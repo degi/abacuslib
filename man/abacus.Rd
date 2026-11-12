@@ -19,6 +19,34 @@ abacus(
   costbenefit = NULL
 )
 }
+\arguments{
+\item{title}{Character. Project title.}
+
+\item{description}{Character. Project description.}
+
+\item{date1}{Date or character. Start date of the analysis period.}
+
+\item{date2}{Date or character. End date of the analysis period.}
+
+\item{landcover}{Data frame of land cover classes (columns: lc_id, label, description).}
+
+\item{landcover_change}{Data frame of land cover transitions (columns: zone_id, lc1_id, lc2_id, area).}
+
+\item{zone}{Data frame of spatial zones (columns: zone_id, label, description). Default NULL.}
+
+\item{carbonstock}{Data frame of carbon stocks per land cover class (columns: zone_id, lc_id, c). Default NULL.}
+
+\item{other_emission_factor}{Optional list of additional emission factors. Default NULL.}
+
+\item{scenario}{List of scenario definitions. Default NULL.}
+
+\item{n_iteration}{Integer. Number of Monte Carlo iterations. Default 1.}
+
+\item{costbenefit}{List of cost-benefit data per intervention. Default NULL.}
+}
+\value{
+An object of class \code{abacus} (a list with version 2 structure).
+}
 \description{
 Generate Abacus object
 }

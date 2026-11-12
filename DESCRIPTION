@@ -1,12 +1,26 @@
 Package: abacuslib
-Title: What the Package Does (One Line, Title Case)
+Title: Land use planning tools library
 Version: 0.0.0.9000
 Authors@R: 
     person("Degi Harja", "Asmara", , "degiharja@gmail.com", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-6079-1305"))
-Description: What the package does (one paragraph).
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
+Author: Degi Harja Asmara [aut, cre]
+Maintainer: Degi Harja Asmara <degiharja@gmail.com>
+Description: Land use planning tools for REDD Abacus, including interactive D3-based abatement cost curves.
+License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Config/roxygen2/version: 8.0.0
+Imports:
+    htmlwidgets,
+    jsonlite,
+    tidyr,
+    shiny
+Suggests:
+    bslib,
+    leaflet,
+    reactable,
+    sf,
+    yaml,
+    plotly
+RoxygenNote: 7.3.3

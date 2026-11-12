@@ -1,0 +1,13 @@
+dependencies:
+- name: d3
+  version: 7.8.5
+  src: "htmlwidgets/lib"
+  script:
+    - d3.v7.min.js
+- name: curve
+  version: 1.0.0
+  src: "htmlwidgets/lib"
+  script:
+    - curvelib.js
+  stylesheet:
+    - curvelib.css

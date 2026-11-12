@@ -1,0 +1,195 @@
+.abacost_curve {
+  --ink: #17212b;
+  --muted: #607080;
+  --line: #d6dee5;
+  --surface: #ffffff;
+  --soft: #f3f6f8;
+  --accent: #176b87;
+  --accent-dark: #0e4c61;
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Tahoma, sans-serif;
+  color: var(--ink);
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.abacost_curve * {
+  box-sizing: border-box;
+}
+
+.abacost_curve .abacost-chart {
+  overflow-x: auto;
+  padding: 0;
+}
+
+.abacost_curve .abacost-chart svg {
+  display: block;
+  margin: 0 auto;
+}
+
+.abacost_curve .abacost-tooltip {
+  position: absolute;
+  background: rgba(15, 23, 42, 0.92);
+  color: #ffffff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.45;
+  pointer-events: none;
+  display: none;
+  white-space: normal;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  z-index: 99999;
+}
+
+.abacost_curve .bar {
+  stroke: white;
+  stroke-width: 0.5px;
+  cursor: pointer;
+}
+
+.abacost_curve .bar:hover {
+  opacity: 0.82;
+}
+
+.abacost_curve .bar-hover-selection {
+  stroke: #f1c40f;
+  stroke-width: 3px;
+  filter: drop-shadow(0 0 8px rgba(241, 196, 15, 0.8)) blur(0.6px);
+}
+
+.abacost_curve .bar-click-selection {
+  stroke: #f4d03f;
+  stroke-width: 7px;
+  filter: drop-shadow(0 0 12px rgba(244, 208, 63, 0.9)) blur(1.6px);
+}
+
+.abacost_curve .reference-line {
+  cursor: ns-resize;
+}
+
+.abacost_curve .vertical-reference-line {
+  pointer-events: none;
+}
+
+.abacost_curve .annotation-balloon {
+  cursor: grab;
+}
+
+.abacost_curve .annotation-balloon:active {
+  cursor: grabbing;
+}
+
+.abacost_curve .reference-match {
+  stroke: #111;
+  stroke-width: 2px;
+}
+
+.abacost_curve .abacost-error-msg {
+  color: #d9534f;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+/* Annotation Contextual Popup Menu */
+.abacost_curve .abacost-annotation-popup {
+  position: absolute;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.18), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  padding: 8px 10px;
+  min-width: 175px;
+  z-index: 999999;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.abacost_curve .annotation-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.abacost_curve .annotation-popup-title {
+  font-weight: 700;
+  font-size: 12px;
+  color: #1e293b;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.abacost_curve .annotation-popup-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.abacost_curve .annotation-popup-close:hover {
+  color: #0f172a;
+  background: #f1f5f9;
+}
+
+.abacost_curve .annotation-popup-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.abacost_curve .annotation-popup-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  background: #f8fafc;
+  color: #1e293b;
+  cursor: pointer;
+  transition: all 120ms ease;
+  text-align: left;
+}
+
+.abacost_curve .annotation-popup-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.abacost_curve .annotation-popup-btn.btn-primary {
+  background: #176b87;
+  border-color: #176b87;
+  color: #ffffff;
+}
+
+.abacost_curve .annotation-popup-btn.btn-primary:hover {
+  background: #0e4c61;
+  border-color: #0e4c61;
+}
+
+.abacost_curve .annotation-popup-btn.btn-danger {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.abacost_curve .annotation-popup-btn.btn-danger:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
